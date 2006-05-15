@@ -41,29 +41,24 @@
 #ifndef HARDWARE_H
 #define HARDWARE_H
 
-#include <atmega128hardware.h>
-#include <ATm128ADC.h>
+#include <atm128hardware.h>
+#include <Atm128Adc.h>
 
-// A/D constants (channels, etc)
+// A/D channels
 enum {
   CHANNEL_RSSI       = ATM128_ADC_SNGL_ADC0,
   CHANNEL_THERMISTOR = ATM128_ADC_SNGL_ADC1,    // normally unpopulated
   CHANNEL_BATTERY    = ATM128_ADC_SNGL_ADC7,
-  ATM128_ADC_PRESCALE = ATM128_ADC_PRESCALE_64  // normal mica2 prescaler value
 };
 
-void inline uwait(int u_sec) {
-    while (u_sec > 0) {
-      asm volatile  ("nop" ::);
-      asm volatile  ("nop" ::);
-      asm volatile  ("nop" ::);
-      asm volatile  ("nop" ::);
-      asm volatile  ("nop" ::);
-      asm volatile  ("nop" ::);
-      asm volatile  ("nop" ::);
-      asm volatile  ("nop" ::);
-      u_sec--;
-    }
-}
+#ifndef MHZ
+/* Clock rate is ~8MHz except if specified by user 
+   (this value must be a power of 2, see MicaTimer.h and MeasureClockC.nc) */
+#define MHZ 8
+#endif
+
+enum {
+  PLATFORM_BAUDRATE = 57600L
+};
 
 #endif //HARDWARE_H

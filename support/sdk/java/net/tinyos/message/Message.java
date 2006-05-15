@@ -287,7 +287,7 @@ public class Message implements Cloneable {
     // Check that length bits from offset are in bounds
     private void checkBounds(int offset, int length) {
 	if (offset < 0 || length <= 0 || offset + length > (data_length * 8))
-	    throw new ArrayIndexOutOfBoundsException("Message.checkBounds: bad offset ("+offset+") or length ("+length+"), for data_length "+data_length);
+	  throw new ArrayIndexOutOfBoundsException("Message.checkBounds: bad offset ("+offset+") or length ("+length+"), for data_length "+data_length+ " in class " + this.getClass());
     }
 
     // Check that value is valid for a bitfield of length length
@@ -453,7 +453,7 @@ public class Message implements Cloneable {
 	// get some high order bits
 	if (bitOffset > 0) {
 	    length -= 8 - bitOffset;
-	    val = (ubyte(byteOffset) & ((1 << (8 - bitOffset)) - 1)) << length;
+	    val = (long)(ubyte(byteOffset) & ((1 << (8 - bitOffset)) - 1)) << length;
 	    byteOffset++;
 	}
 
@@ -576,7 +576,7 @@ public class Message implements Cloneable {
      * Set the 32 bit IEEE float at offset to value
      * @param offset bit offset where the float starts
      * @param length is ignored
-     * @parem value value to store in bitfield
+     * @param value value to store in bitfield
      * @exception ArrayIndexOutOfBoundsException for invalid offset
      */
     protected void setFloatElement(int offset, int length, float value)

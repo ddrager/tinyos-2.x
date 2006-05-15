@@ -47,7 +47,7 @@
  * @author David Gay
  */
   
-#include "TOSMsg.h"
+#include "message.h"
 #include "crc.h"
 #include "CC1000Const.h"
 #include "Timer.h"
@@ -61,13 +61,14 @@ module CC1000SendReceiveP {
     interface RadioTimeStamping;
     interface Packet;
     interface ByteRadio;
+    interface PacketAcknowledgements;
   }
   uses {
     //interface PowerManagement;
     interface CC1000Control;
-    interface HPLCC1000Spi;
+    interface HplCC1000Spi;
 
-    interface AcquireDataNow as RssiRx;
+    interface ReadNow<uint16_t> as RssiRx;
     async command am_addr_t amAddress();
   }
 }
@@ -126,6 +127,20 @@ implementation
 
   const_uint8_t ackCode[5] = { 0xab, ACK_BYTE1, ACK_BYTE2, 0xaa, 0xaa };
 
+  /* Packet structure accessor functions. Note that everything is
+   * relative to the data field. */
+  cc1000_header_t* getHeader(message_t* amsg) {
+    return (cc1000_header_t*)(amsg->data - sizeof(cc1000_header_t));
+  }
+
+  cc1000_footer_t* getFooter(message_t* amsg) {
+    return (cc1000_footer_t*)(amsg->footer);
+  }
+  
+  cc1000_metadata_t* getMetadata(message_t* amsg) {
+    return (cc1000_metadata_t*)((uint8_t*)amsg->footer + sizeof(cc1000_footer_t));
+  }
+  
   /* State transition functions */
   /*----------------------------*/
 
@@ -141,12 +156,14 @@ implementation
   void enterSyncState() {
     radioState = SYNC_STATE;
     count = 0;
+    rxShiftBuf = 0;
   }
 
   void enterRxState() {
+    cc1000_header_t* header = getHeader(rxBufPtr);
     radioState = RX_STATE;
-    rxBufPtr->header.length = sizeof rxBufPtr->data;
-    count = 0;
+    header->length = sizeof rxBufPtr->data;
+    count = sizeof(message_header_t) - sizeof(cc1000_header_t);
     runningCrc = 0;
   }
 
@@ -173,8 +190,9 @@ implementation
   void enterTxDataState() {
     radioState = TXDATA_STATE;
     // The count increment happens before the first byte is read from the
-    // packet, so we initialise count to -1 to compensate.
-    count = -1; 
+    // packet, so we subtract one from the real packet start point to
+    // compensate.
+    count = (sizeof(message_header_t) - sizeof(cc1000_header_t)) -1; 
   }
 
   void enterTxCrcState() {
@@ -202,7 +220,7 @@ implementation
   }
 
   command error_t Init.init() {
-    call HPLCC1000Spi.initSlave();
+    call HplCC1000Spi.initSlave();
     return SUCCESS;
   }
 
@@ -228,10 +246,14 @@ implementation
       {
 	if (f.txBusy)
 	  return FAIL;
-
-	f.txBusy = TRUE;
-	msg->header.length = len;
-	txBufPtr = msg;
+	else {
+	  cc1000_header_t* header = getHeader(msg);
+	  cc1000_metadata_t* md = getMetadata(msg);
+	  f.txBusy = TRUE;
+	  header->length = len;
+	  txBufPtr = msg;
+	  call ByteRadio.setAck(md->ack);
+	}
       }
     signal ByteRadio.rts();
 
@@ -241,9 +263,9 @@ implementation
   async command void ByteRadio.cts() {
     /* We're set to go! Start with our exciting preamble... */
     enterTxPreambleState();
-    call HPLCC1000Spi.writeByte(0xaa);
+    call HplCC1000Spi.writeByte(0xaa);
     call CC1000Control.txMode();
-    call HPLCC1000Spi.txMode();
+    call HplCC1000Spi.txMode();
   }
 
   command error_t Send.cancel(message_t *msg) {
@@ -252,7 +274,7 @@ implementation
   }
 
   void sendNextByte() {
-    call HPLCC1000Spi.writeByte(nextTxByte);
+    call HplCC1000Spi.writeByte(nextTxByte);
     count++;
   }
 
@@ -269,12 +291,14 @@ implementation
     sendNextByte();
     nextTxByte = SYNC_BYTE2;
     enterTxDataState();
-    signal RadioTimeStamping.txSFD(0, txBufPtr); 
+    signal RadioTimeStamping.transmittedSFD(0, txBufPtr); 
   }
 
   void txData() {
+    cc1000_header_t* txHeader = getHeader(txBufPtr);
     sendNextByte();
-    if (count < txBufPtr->header.length + sizeof txBufPtr->header)
+    
+    if (count < txHeader->length + sizeof(message_header_t))
       {
 	nextTxByte = ((uint8_t *)txBufPtr)[count];
 	runningCrc = crcByte(runningCrc, nextTxByte);
@@ -299,7 +323,7 @@ implementation
 	enterTxWaitForAckState();
       else
 	{
-	  call HPLCC1000Spi.rxMode();
+	  call HplCC1000Spi.rxMode();
 	  call CC1000Control.rxMode();
 	  enterTxDoneState();
 	}
@@ -309,7 +333,7 @@ implementation
     sendNextByte();
     if (count == 1)
       {
-	call HPLCC1000Spi.rxMode();
+	call HplCC1000Spi.rxMode();
 	call CC1000Control.rxMode();
       }
     else if (count > 3)
@@ -330,14 +354,16 @@ implementation
 
 	if (rxShiftBuf == ACK_WORD)
 	  {
-	    txBufPtr->metadata.ack = 1;
+	    cc1000_metadata_t* txMetadata = getMetadata(txBufPtr);
+	    txMetadata->ack = 1;
 	    enterTxDoneState();
 	    return;
 	  }
       }
     if (count >= MAX_ACK_WAIT)
       {
-	txBufPtr->metadata.ack = 0;
+	cc1000_metadata_t* txMetadata = getMetadata(txBufPtr);
+	txMetadata->ack = 0;
 	enterTxDoneState();
       }
   }
@@ -368,13 +394,13 @@ implementation
   async command void ByteRadio.listen() {
     enterListenState();
     call CC1000Control.rxMode();
-    call HPLCC1000Spi.rxMode();
-    call HPLCC1000Spi.enableIntr();
+    call HplCC1000Spi.rxMode();
+    call HplCC1000Spi.enableIntr();
   }
 
   async command void ByteRadio.off() {
     enterInactiveState();
-    call HPLCC1000Spi.disableIntr();
+    call HplCC1000Spi.disableIntr();
   }
 
   void listenData(uint8_t in) {
@@ -432,26 +458,32 @@ implementation
 		enterRxState();
 		signal ByteRadio.rx();
 		f.rxBitOffset = 7 - i;
-		signal RadioTimeStamping.rxSFD(0, rxBufPtr);
-		call RssiRx.getData();
+		signal RadioTimeStamping.receivedSFD(0);
+		call RssiRx.read();
 	      }
 	  }
       }
     else // We didn't find it after a reasonable number of tries, so....
       enterListenState();
   }
+  
+  async event void RssiRx.readDone(error_t result, uint16_t data) {
+    cc1000_metadata_t* rxMetadata = getMetadata(rxBufPtr);
 
-  async event void RssiRx.dataReady(uint16_t data) {
-    rxBufPtr->metadata.strength = data;
-  }
-
-  event void RssiRx.error(uint16_t info) {
-    rxBufPtr->metadata.strength = 0;
+    if (result != SUCCESS)
+      rxMetadata->strength = 0;
+    else
+      rxMetadata->strength = data;
   }
 
   void rxData(uint8_t in) {
     uint8_t nextByte;
-    uint8_t rxLength = rxBufPtr->header.length + offsetof(message_t, data);
+    cc1000_header_t* rxHeader = getHeader(rxBufPtr);
+
+    // rxLength is the offset into a message_t at which the packet
+    // data ends: it is NOT equal to the number of bytes received,
+    // as there may be padding in the message_t before the packet.
+    uint8_t rxLength = rxHeader->length + offsetof(message_t, data);
 
     // Reject invalid length packets
     if (rxLength > TOSH_DATA_LENGTH + offsetof(message_t, data))
@@ -470,26 +502,29 @@ implementation
       runningCrc = crcByte(runningCrc, nextByte);
 
     // Jump to CRC when we reach the end of data
-    if (count == rxLength)
-      count = offsetof(message_t, footer.crc);
+    if (count == rxLength) {
+      count = offsetof(message_t, footer) + offsetof(cc1000_footer_t, crc);
+    }
 
-    if (count == offsetof(message_t, metadata))
+    if (count == (offsetof(message_t, footer) + sizeof(cc1000_footer_t)))
       packetReceived();
   }
 
   void packetReceived() {
+    cc1000_footer_t* rxFooter = getFooter(rxBufPtr);
+    cc1000_header_t* rxHeader = getHeader(rxBufPtr);
     // Packet filtering based on bad CRC's is done at higher layers.
     // So sayeth the TOS weenies.
-    rxBufPtr->footer.crc = rxBufPtr->footer.crc == runningCrc;
+    rxFooter->crc = (rxFooter->crc == runningCrc);
 
     if (f.ack &&
-	rxBufPtr->footer.crc &&
-	rxBufPtr->header.addr == call amAddress())
+	rxFooter->crc &&
+	rxHeader->addr == call amAddress())
       {
 	enterAckState();
 	call CC1000Control.txMode();
-	call HPLCC1000Spi.txMode();
-	call HPLCC1000Spi.writeByte(0xaa);
+	call HplCC1000Spi.txMode();
+	call HplCC1000Spi.writeByte(0xaa);
       }
     else
       packetReceiveDone();
@@ -499,16 +534,16 @@ implementation
     if (++count >= ACK_LENGTH)
       { 
 	call CC1000Control.rxMode();
-	call HPLCC1000Spi.rxMode();
+	call HplCC1000Spi.rxMode();
 	packetReceiveDone();
       }
     else if (count >= ACK_LENGTH - sizeof ackCode)
-      call HPLCC1000Spi.writeByte(read_uint8_t(&ackCode[count + sizeof ackCode - ACK_LENGTH]));
+      call HplCC1000Spi.writeByte(read_uint8_t(&ackCode[count + sizeof ackCode - ACK_LENGTH]));
   }
 
   task void signalPacketReceived() {
     message_t *pBuf;
-
+    cc1000_header_t* pHeader;
     atomic
       {
 	if (radioState != RECEIVED_STATE)
@@ -516,7 +551,8 @@ implementation
 
 	pBuf = rxBufPtr;
       }
-    pBuf = signal Receive.receive(pBuf, pBuf->data, pBuf->header.length);
+    pHeader = getHeader(pBuf);
+    pBuf = signal Receive.receive(pBuf, pBuf->data, pHeader->length);
     atomic
       {
 	if (pBuf) 
@@ -531,7 +567,7 @@ implementation
     enterReceivedState();
   }
 
-  async event void HPLCC1000Spi.dataReady(uint8_t data) {
+  async event void HplCC1000Spi.dataReady(uint8_t data) {
     if (f.invert)
       data = ~data;
 
@@ -584,21 +620,60 @@ implementation
   }
 
   command uint8_t Packet.payloadLength(message_t* msg) {
-    return msg->header.length;
+    cc1000_header_t* header = getHeader(msg);
+    return header->length;
   }
  
+  command void Packet.setPayloadLength(message_t* msg, uint8_t len) {
+    getHeader(msg)->length  = len;
+  }
+  
   command uint8_t Packet.maxPayloadLength() {
     return TOSH_DATA_LENGTH;
   }
 
   command void* Packet.getPayload(message_t* msg, uint8_t* len) {
     if (len != NULL) {
-      *len = msg->header.length;
+      cc1000_header_t* header = getHeader(msg);
+      *len = header->length;
     }
     return (void*)msg->data;
   }
+
+  async command error_t PacketAcknowledgements.requestAck(message_t* msg) {
+    cc1000_metadata_t* md = getMetadata(msg);
+    md->ack = 1;
+    return SUCCESS;
+  }
+
+  async command error_t PacketAcknowledgements.noAck(message_t* msg) {
+    cc1000_metadata_t* md = getMetadata(msg);
+    md->ack = 1;
+    return SUCCESS;
+  }
+
+  command void* Receive.getPayload(message_t* m, uint8_t* len) {
+    return call Packet.getPayload(m, len);
+  }
+
+  command uint8_t Receive.payloadLength(message_t* m) {
+    return call Packet.payloadLength(m);
+  }
+
+  command uint8_t Send.maxPayloadLength() {
+    return call Packet.maxPayloadLength();
+  }
+
+  command void* Send.getPayload(message_t* m) {
+    return call Packet.getPayload(m, NULL);
+  }
+
+  async command bool PacketAcknowledgements.wasAcked(message_t* msg) {
+    cc1000_metadata_t* md = getMetadata(msg);
+    return md->ack;
+  }
   // Default events for radio send/receive coordinators do nothing.
   // Be very careful using these, or you'll break the stack.
-  default async event void RadioTimeStamping.txSFD(uint32_t time, message_t* msgBuff) { }
-  default async event void RadioTimeStamping.rxSFD(uint32_t time, message_t* msgBuff) { }
+  default async event void RadioTimeStamping.transmittedSFD(uint16_t time, message_t* msgBuff) { }
+  default async event void RadioTimeStamping.receivedSFD(uint16_t time) { }
 }

@@ -7,16 +7,26 @@
 push( @includes, qw(
 
   %T/platforms/telosb
+  %T/platforms/telosb/chips/stm25p
   %T/platforms/telosa
   %T/platforms/telosa/chips/cc2420
-  %T/chips/cc2420
+  %T/platforms/telosa/chips/s1087
+  %T/platforms/telosa/chips/s10871
+  %T/platforms/telosa/chips/sht11
+  %T/chips/cc2420_pm
   %T/chips/msp430
   %T/chips/msp430/adc12
-  %T/chips/msp430/io
-  %T/chips/msp430/bus
+  %T/chips/msp430/dma
+  %T/chips/msp430/pins
   %T/chips/msp430/timer
+  %T/chips/msp430/usart
+  %T/chips/msp430/sensors
+  %T/chips/stm25p
+  %T/chips/sht11
   %T/lib/timer
-
+  %T/lib/serial
+  %T/lib/adc
+  %T/lib/power
 ) );
 
 @opts = qw(
@@ -25,7 +35,7 @@ push( @includes, qw(
   -mmcu=msp430x1611
   -fnesc-target=msp430
   -fnesc-no-debug
-  -fnesc-scheduler=TinyScheduler,TinyScheduler.TaskBasic,TaskBasic,TaskBasic,runTask,postTask
+  -fnesc-scheduler=TinySchedulerC,TinySchedulerC.TaskBasic,TaskBasic,TaskBasic,runTask,postTask
 
 );
 

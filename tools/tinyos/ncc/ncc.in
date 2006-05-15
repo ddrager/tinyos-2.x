@@ -13,6 +13,7 @@
 $TOSDIR = "@TOSDIR@";
 $TOSDIR = $ENV{"TOSDIR"} if defined($ENV{"TOSDIR"});
 $nescc = "@nescc_prefix@/bin/nescc";
+$tossim = 0;
 
 # Support platform directory renaming for 2.x
 if (-d "$TOSDIR/platform") {
@@ -48,6 +49,10 @@ for ($i = 0; $i <= $#ARGV; $i++) {
 	    $print_tosdir = 1;
 	    $strip = 1;
 	}
+	elsif (/^-print-target$/) {
+	    $print_target = 1;
+	    $strip = 1;
+	}
 	elsif (/^-print-platforms$/) {
 	    $print_platforms = 1;
 	    $strip = 1;
@@ -57,6 +62,10 @@ for ($i = 0; $i <= $#ARGV; $i++) {
 	}
 	elsif (/^-v$/) {
 	    $verbose = 1;
+	}
+	elsif (/^-tossim$/) {
+	    $tossim = 1;
+            $strip = 1;
 	}
 	elsif (/^-I/) {
 	    ($i, $file) = &extractarg($i);
@@ -90,7 +99,24 @@ if ($print_platforms)
     exit 0;
 }
 
-$target = "@default_target@" if !defined($target);
+if ($tossim) {
+  push @new_args, "-DTOSSIM";
+}
+
+if (!defined $target) {
+    if (open DEFTARGET, "$TOSDIR/.default-platform") {
+	$target = <DEFTARGET>;
+	chomp $target;
+    }
+    else {
+	$target = "@default_target@";
+    }
+}
+
+if ($print_target) {
+    print $target, "\n";
+    exit 0;
+}
 
 # First see if the directory for this platform was explicitly specified
 foreach $dir (@includes) {
@@ -100,7 +126,31 @@ foreach $dir (@includes) {
     }
 }
 
-$platform_def = "$TOSDIR/$platform/$target/.platform" unless $platform_def;
+if (!-f $platform_def) {
+    # Next, check if it's a "plain" platform
+    if (-f "$TOSDIR/$platform/$target/.platform") {
+	$platform_def = "$TOSDIR/$platform/$target/.platform";
+    }
+    else {
+	# Finally, see if it's in a platform family
+	opendir PLATFORMS, "$TOSDIR/$platform";
+	foreach $dir (readdir PLATFORMS) {
+	    if (-f "$TOSDIR/$platform/$dir/.family") {
+		if (-f "$TOSDIR/$platform/$dir/$target/.platform") {
+		    $platform_def = "$TOSDIR/$platform/$dir/$target/.platform";
+		    $family_def = "$TOSDIR/$platform/$dir/.family";
+		    last;
+		}
+	    }
+	}
+	closedir PLATFORMS;
+    }
+}
+
+# Use sim directory with tossim
+$platform_def =~ s!\.platform$!sim/.platform! if $tossim;
+$family_def =~ s!\.family$!sim/.family! if $tossim && $family_def;
+
 if (!-f $platform_def) {
     print STDERR "Unknown target $target\n";
     print STDERR "Known targets for TinyOS directory $TOSDIR\n";
@@ -117,19 +167,9 @@ if (!-f $platform_def) {
     exit 2;
 }
 
-do $platform_def;
-
-push @new_args, @opts;
-
-# documentation: set the default topdir based on TOSDIR
-my ($tosparent) = ($TOSDIR =~ m!^(.*)/.*?$!);
-unshift @new_args, "-topdir=$tosparent";
-
-unshift @new_args, "-fnesc-include=tos";
+# Setup sensor boards
+push @includes, map "%T/sensorboards/$_", @boards unless $nostdinc;
 unshift @new_args, map "-DBOARD_\U$_", @boards;
-unshift @new_args, "-DPLATFORM_\U$target";
-unshift @new_args, "$nescc";
-
 # Execute .sensor file in selected sensor board directories if it exists
 $i = 0;
 BOARD: while ($i <= $#boards) {
@@ -153,20 +193,47 @@ BOARD: while ($i <= $#boards) {
     $i++;
 }
 
+# Setup platform
+$platform_dir = $platform_def;
+$platform_dir =~ s!/\.platform$!!;
+push @includes, $platform_dir unless $nostdinc;
+do $platform_def;
+do $family_def if -f $family_def;
+unshift @new_args, "-DPLATFORM_\U$target";
+
+push @new_args, @opts;
+
+# old nesdoc: set the default topdir based on TOSDIR
+my ($tosparent) = ($TOSDIR =~ m!^(.*)/.*?$!);
+unshift @new_args, "-topdir=$tosparent";
+
+unshift @new_args, "-fnesc-include=tos";
+unshift @new_args, "$nescc";
+
 if (!$nostdinc) {
-    push @includes, map "%T/sensorboards/$_", @boards;
-    push @includes, map "%T/sensorboards/$_", @commonboards;
-    push @includes, "%T/$platform/$target";
     push @includes, map "%T/$platform/$_", @commonplatforms;
     push @includes, "%T/interfaces";
     push @includes, "%T/types";
     push @includes, "%T/system";
+    push @includes, "%T/system/arbiters";
 }
 
+
+if ($tossim) {
+  foreach $idir (@includes) {
+    $idir = &idir_subst($idir);
+    push @new_args, "-I$idir/sim";
+  }
+  $tossim_dir = &idir_subst("-I%T/lib/tossim");
+  push @new_args, $tossim_dir;
+}
 foreach $idir (@includes) {
     $idir = &idir_subst($idir);
     push @new_args, "-I$idir";
 }
+
+
+
 
 print STDERR join(' ', @new_args), "\n" if $verbose;
 
@@ -215,18 +282,26 @@ sub push_platform {
 }
 
 sub all_platforms() {
-    local(@platforms);
+  local(@platforms);
 
-    foreach $dir (@includes) {
-	push_platform($1) if -f "$dir/.platform" && $dir =~ m!/([^/]*)/?$!;
-    }
+  foreach $dir (@includes) {
+    push_platform($1) if -f "$dir/.platform" && $dir =~ m!/([^/]*)/?$!;
+  }
 
-    if (opendir PLATFORMS, "$TOSDIR/$platform") {
-	foreach $d (readdir PLATFORMS) {
-	    push_platform($d) if (-f "$TOSDIR/$platform/$d/.platform");
-	}
-	closedir PLATFORMS;
-    }
+  if (opendir PLATFORMS, "$TOSDIR/$platform") {
+      foreach $d (readdir PLATFORMS) {
+	  push_platform($d) if (-f "$TOSDIR/$platform/$d/.platform");
+	  if (-f "$TOSDIR/$platform/$d/.family") {
+	      if (opendir SUBPLATFORMS, "$TOSDIR/$platform/$d") {
+		  foreach $subdir (readdir SUBPLATFORMS) {
+		      push_platform($subdir) if (-f "$TOSDIR/$platform/$d/$subdir/.platform");
+		  }
+	      }
+	      closedir SUBPLATFORMS;
+	  }
+      }
+      closedir PLATFORMS;
+  }
 
-    return @platforms;
+  return @platforms;
 }

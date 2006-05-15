@@ -28,14 +28,9 @@
  * Intel Research Berkeley, 2150 Shattuck Avenue, Suite 1300, Berkeley, CA, 
  * 94704.  Attention:  Intel License Inquiry.
  */
-/*
- *
- * Authors:		Philip Levis
- * Date last modified:  $Id$
- *
- */
-
 /**
+ * Implementation component for CC1000ActiveMessageC.
+ *
  * @author Philip Levis
  * @date June 19 2005
  */
@@ -50,18 +45,24 @@ module CC1000ActiveMessageP {
   uses {
     interface Send as SubSend;
     interface Receive as SubReceive;
+    interface Packet as Packet;
     command am_addr_t amAddress();
   }
 }
 implementation {
 
+  cc1000_header_t* getHeader(message_t* amsg) {
+    return (cc1000_header_t*)(amsg->data - sizeof(cc1000_header_t));
+  }
+  
   command error_t AMSend.send[am_id_t id](am_addr_t addr,
-					  message_t* msg,
+					  message_t* amsg,
 					  uint8_t len) {
-    msg->header.type = id;
-    msg->header.addr = addr;
-    msg->header.group = TOS_AM_GROUP;
-    return call SubSend.send(msg, len);
+    cc1000_header_t* header = getHeader(amsg);
+    header->type = id;
+    header->addr = addr;
+    header->group = TOS_AM_GROUP;
+    return call SubSend.send(amsg, len);
   }
 
   command error_t AMSend.cancel[am_id_t id](message_t* msg) {
@@ -70,6 +71,14 @@ implementation {
 
   event void SubSend.sendDone(message_t* msg, error_t result) {
     signal AMSend.sendDone[call AMPacket.type(msg)](msg, result);
+  }
+
+  command uint8_t AMSend.maxPayloadLength[am_id_t id]() {
+    return call Packet.maxPayloadLength();
+  }
+
+  command void* AMSend.getPayload[am_id_t id](message_t* m) {
+    return call Packet.getPayload(m, NULL);
   }
 
   /* Receiving a packet */
@@ -83,23 +92,51 @@ implementation {
     }
   }
   
+  command void* Receive.getPayload[am_id_t id](message_t* m, uint8_t* len) {
+    return call Packet.getPayload(m, len);
+  }
+
+  command uint8_t Receive.payloadLength[am_id_t id](message_t* m) {
+    return call Packet.payloadLength(m);
+  }
+  
+  command void* Snoop.getPayload[am_id_t id](message_t* m, uint8_t* len) {
+    return call Packet.getPayload(m, len);
+  }
+
+  command uint8_t Snoop.payloadLength[am_id_t id](message_t* m) {
+    return call Packet.payloadLength(m);
+  }
+
   command am_addr_t AMPacket.address() {
     return call amAddress();
   }
  
   command am_addr_t AMPacket.destination(message_t* amsg) {
-    return amsg->header.addr;
+    cc1000_header_t* header = getHeader(amsg);
+    return header->addr;
   }
 
+  command void AMPacket.setDestination(message_t* amsg, am_addr_t addr) {
+    cc1000_header_t* header = getHeader(amsg);
+    header->addr = addr;
+  }
+  
   command bool AMPacket.isForMe(message_t* amsg) {
     return (call AMPacket.destination(amsg) == call AMPacket.address() ||
 	    call AMPacket.destination(amsg) == AM_BROADCAST_ADDR);
   }
 
   command am_id_t AMPacket.type(message_t* amsg) {
-    return amsg->header.type;
+    cc1000_header_t* header = getHeader(amsg);
+    return header->type;
   }
 
+  command void AMPacket.setType(message_t* amsg, am_id_t type) {
+    cc1000_header_t* header = getHeader(amsg);
+    header->type = type;
+  }
+  
   //command am_group_t AMPacket.group(message_t* amsg) {
   //  return amsg->header.group;
   //}

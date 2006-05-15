@@ -61,13 +61,17 @@
  * @author Phil Buonadonna
  * @author Lewis Girod
  * @author Ben Greenstein
+ * @author Philip Levis
  * @date   August 7 2005
  */
 
 #ifndef SERIAL_H
 #define SERIAL_H
+#include "AM.h"
 
 typedef uint8_t uart_id_t;
+
+#define UQ_SERIALQUEUE_SEND "SerialQueueP.Send"
 
 enum {
   HDLC_FLAG_BYTE	   = 0x7e,
@@ -77,10 +81,10 @@ enum {
 // message_t type dispatch
 
 enum {
-  TOS_SERIAL_UNKNOWN_ID,
-  TOS_SERIAL_ACTIVE_MESSAGE_ID,
-  TOS_SERIAL_CC1000_ID,
-  TOS_SERIAL_802_15_4_ID,
+  TOS_SERIAL_ACTIVE_MESSAGE_ID = 0,
+  TOS_SERIAL_CC1000_ID = 1,
+  TOS_SERIAL_802_15_4_ID = 2,
+  TOS_SERIAL_UNKNOWN_ID = 255,
 };
 
 // Framer-level dispatch
@@ -105,5 +109,16 @@ typedef struct radio_stats {
   uint16_t serial_proto_drops;
 } radio_stats_t;
 
+typedef nx_struct serial_header {
+  nx_am_addr_t addr;
+  nx_uint8_t length;
+  nx_am_group_t group;
+  nx_am_id_t type;
+} serial_header_t;
+
+typedef nx_struct serial_packet {
+  serial_header_t header;
+  nx_uint8_t data[];
+} serial_packet_t;
 
 #endif
