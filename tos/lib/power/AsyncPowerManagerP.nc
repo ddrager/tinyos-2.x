@@ -61,35 +61,31 @@ implementation {
 
   norace struct {
     uint8_t stopping :1;
-    uint8_t requested :1;
   } f; //for flags
   
   command error_t Init.init() {
-    call ResourceController.immediateRequest();
+    call ResourceController.request();
     return SUCCESS;
   }
 
   event void ResourceController.requested() {
-    if(f.stopping == FALSE) {
-      call AsyncStdControl.start();
-      call ResourceController.release();
-    }
-    else atomic f.requested = TRUE;    
+    call AsyncStdControl.start();
+    call ResourceController.release();  
   }
 
-  event void ResourceController.idle() {
-    if(call ResourceController.immediateRequest() == SUCCESS) {
+  async event void ResourceController.immediateRequested() {
+    if(f.stopping == FALSE) {
+      call AsyncStdControl.start();
+      call ResourceController.immediateRelease();
+    }
+  }
+
+  async event void ResourceController.idle() {
+    if(call ResourceController.request() == SUCCESS) {
       atomic f.stopping = TRUE;
       call PowerDownCleanup.cleanup();
       call AsyncStdControl.stop();
-    }
-    if(f.requested == TRUE) {
-      call AsyncStdControl.start();
-      call ResourceController.release();
-    }
-    atomic {
-      f.stopping = FALSE;
-      f.requested = FALSE;
+      atomic f.stopping = FALSE;
     }
   }
 
