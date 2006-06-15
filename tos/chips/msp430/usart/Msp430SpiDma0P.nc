@@ -35,33 +35,37 @@
  */
 
 configuration Msp430SpiDma0P {
-  
+
   provides interface Resource[ uint8_t id ];
+  provides interface ResourceControl [uint8_t id];
   provides interface SpiByte;
   provides interface SpiPacket[ uint8_t id ];
-  
+
   uses interface Resource as UsartResource[ uint8_t id ];
+  uses interface Msp430SpiConfigure[ uint8_t id ];
   uses interface HplMsp430UsartInterrupts as UsartInterrupts;
-  
+
 }
 
 implementation {
-  
+
   components new Msp430SpiDmaP() as SpiP;
   Resource = SpiP.Resource;
+  ResourceControl = SpiP.ResourceControl;
+  Msp430SpiConfigure = SpiP.Msp430SpiConfigure;
   SpiByte = SpiP.SpiByte;
   SpiPacket = SpiP.SpiPacket;
   UsartResource = SpiP.UsartResource;
   UsartInterrupts = SpiP.UsartInterrupts;
-  
+
   components HplMsp430Usart0C as UsartC;
   SpiP.Usart -> UsartC;
-  
+
   components Msp430DmaC as DmaC;
   SpiP.DmaChannel1 -> DmaC.Channel1;
   SpiP.DmaChannel2 -> DmaC.Channel2;
-  
+
   components LedsC as Leds;
   SpiP.Leds -> Leds;
-  
+
 }

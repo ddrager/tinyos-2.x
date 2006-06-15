@@ -37,27 +37,29 @@
  */
 
 generic configuration Msp430Usart0C() {
-  
+
   provides interface Resource;
   provides interface ArbiterInfo;
   provides interface HplMsp430Usart;
   provides interface HplMsp430UsartInterrupts;
-  
+
+  uses interface ResourceConfigure;
 }
 
 implementation {
-  
+
   enum {
     CLIENT_ID = unique( MSP430_HPLUSART0_RESOURCE ),
   };
-  
+
   components Msp430UsartShare0P as UsartShareP;
-  
+
   Resource = UsartShareP.Resource[ CLIENT_ID ];
+  ResourceConfigure = UsartShareP.ResourceConfigure[ CLIENT_ID ];
   ArbiterInfo = UsartShareP.ArbiterInfo;
   HplMsp430UsartInterrupts = UsartShareP.Interrupts[ CLIENT_ID ];
 
   components HplMsp430Usart0C as UsartC;
   HplMsp430Usart = UsartC;
-  
+
 }

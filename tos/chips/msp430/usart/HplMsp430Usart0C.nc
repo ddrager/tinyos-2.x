@@ -61,7 +61,7 @@
  * @version $Revision$ $Date$
  */
 
-#include "msp430UsartResource.h"
+#include "Msp430Usart.h"
 
 configuration HplMsp430Usart0C {
 
@@ -72,18 +72,18 @@ configuration HplMsp430Usart0C {
 }
 
 implementation {
-  
+
   components HplMsp430Usart0P as HplUsartP;
   components HplMsp430GeneralIOC as GIO;
-  
+
   AsyncStdControl = HplUsartP;
   HplMsp430Usart = HplUsartP;
   HplMsp430UsartInterrupts = HplUsartP;
-  
+
   HplUsartP.SIMO -> GIO.SIMO0;
   HplUsartP.SOMI -> GIO.SOMI0;
   HplUsartP.UCLK -> GIO.UCLK0;
   HplUsartP.URXD -> GIO.URXD0;
   HplUsartP.UTXD -> GIO.UTXD0;
-  
+
 }

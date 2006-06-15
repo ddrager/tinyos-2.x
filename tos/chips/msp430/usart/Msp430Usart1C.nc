@@ -30,40 +30,37 @@
  */
 
 /**
+ * Provides an interface for USART1 on the MSP430.
+ *
+ * @author Vlado Handziski <handisk@tkn.tu-berlin.de>
  * @author Jonathan Hui <jhui@archedrock.com>
  * @version $Revision$ $Date$
  */
 
-configuration Msp430UsartShare0P {
+generic configuration Msp430Usart1C() {
 
-  provides interface HplMsp430UsartInterrupts as Interrupts[ uint8_t id ];
-  provides interface Resource[ uint8_t id ];
+  provides interface Resource;
   provides interface ArbiterInfo;
+  provides interface HplMsp430Usart;
+  provides interface HplMsp430UsartInterrupts;
 
-  uses interface ResourceConfigure[ uint8_t id ];
+  uses interface ResourceConfigure;
 }
 
 implementation {
 
-  components new Msp430UsartShareP() as UsartShareP;
-  Interrupts = UsartShareP;
-  UsartShareP.RawInterrupts -> UsartC;
+  enum {
+    CLIENT_ID = unique( MSP430_HPLUSART1_RESOURCE ),
+  };
 
-  components new FcfsArbiterC( MSP430_HPLUSART0_RESOURCE ) as ArbiterC;
-  Resource = ArbiterC;
-  ResourceConfigure = ArbiterC;
-  ArbiterInfo = ArbiterC;
-  UsartShareP.ArbiterInfo -> ArbiterC;
+  components Msp430UsartShare1P as UsartShareP;
 
-  components new AsyncStdControlPowerManagerC() as PowerManagerC;
-  PowerManagerC.ArbiterInit -> ArbiterC;
-  PowerManagerC.ResourceController -> ArbiterC;
+  Resource = UsartShareP.Resource[ CLIENT_ID ];
+  ResourceConfigure = UsartShareP.ResourceConfigure[ CLIENT_ID ];
+  ArbiterInfo = UsartShareP.ArbiterInfo;
+  HplMsp430UsartInterrupts = UsartShareP.Interrupts[ CLIENT_ID ];
 
-  components HplMsp430Usart0C as UsartC;
-  PowerManagerC.AsyncStdControl -> UsartC;
-
-  components MainC;
-  MainC.SoftwareInit -> ArbiterC;
-  MainC.SoftwareInit -> PowerManagerC;
+  components HplMsp430Usart1C as UsartC;
+  HplMsp430Usart = UsartC;
 
 }
