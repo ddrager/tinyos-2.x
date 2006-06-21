@@ -90,7 +90,7 @@ interface Resource {
   *             FAIL You tried to release but you are not the
   *                    owner of the resource and you have no requests pending
   */
-  command error_t release();
+  async command error_t release();
 
   /**
    *  Check if the user of this interface is the current

@@ -62,40 +62,39 @@
  *
  * This component provides the Resource, ArbiterInfo, and Resource
  * Controller interfaces and uses the ResourceConfigure interface as
- * described in TEP 108.  It provides arbitration to a shared resource in a
- * round robin fashion.  An array is used to keep track of which users have
- * put in requests for the resource.  Upon the release of the resource by
- * one of these users, the array is checked and the next user (in round
- * robin order) that has a pending request will ge granted control of the
- * resource.  If there are no pending requests, then the resource becomes
- * idle and any user can put in a request and immediately receive access to
- * the round robin order * Resource.
+ * described in TEP 108.  It provides arbitration to a shared resource in
+ * an FCFS fashion.  An array is used to keep track of which users have put
+ * in requests for the resource.  Upon the release of the resource by one
+ * of these users, the array is checked and the next user (in FCFS order)
+ * that has a pending request will ge granted control of the resource.  If
+ * there are no pending requests, then the resource becomes idle and any
+ * user can put in a request and immediately receive access to the
+ * Resource.
  *
  * @param <b>resourceName</b> -- The name of the Resource being shared
  * 
  * @author Kevin Klues (klues@tkn.tu-berlin.de)
- * @author Philip Levis
  */
  
-generic configuration AsyncFcfsPriorityArbiterC(char resourceName[]) {
+generic configuration ControlledRoundRobinArbiterC(char resourceName[]) {
   provides {
-    interface AsyncResource as Resource[uint8_t id];
-    interface AsyncResourceController as HighPriorityClient;
-    interface AsyncResourceController as LowPriorityClient;
+    interface Resource[uint8_t id];
+    interface ResourceController;
     interface ArbiterInfo;
   }
+  uses interface ResourceConfigure[uint8_t id];
 }
 implementation {
   components MainC;
-  components new AsyncFcfsQueueC(uniqueCount(resourceName)) as Queue;
-  components new AsyncPriorityArbiterP(uniqueCount(resourceName), uniqueCount(resourceName) + 1) as Arbiter;
+  components new AsyncRoundRobinQueueC(uniqueCount(resourceName)) as Queue;
+  components new ControlledArbiterP(uniqueCount(resourceName)) as Arbiter;
 
   MainC.SoftwareInit -> Queue;
 
   Resource = Arbiter;
-  HighPriorityClient = Arbiter.HighPriorityClient;
-  LowPriorityClient = Arbiter.LowPriorityClient;
+  ResourceController = Arbiter;
   ArbiterInfo = Arbiter;
+  ResourceConfigure = Arbiter;
 
   Arbiter.Queue -> Queue;
 }

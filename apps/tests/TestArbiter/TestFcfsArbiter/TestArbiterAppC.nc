@@ -67,7 +67,7 @@ implementation {
      new TimerMilliC() as Timer0,
      new TimerMilliC() as Timer1,
      new TimerMilliC() as Timer2,
-     new FcfsArbiterC(TEST_ARBITER_RESOURCE) as Arbiter;
+     new ControlledFcfsArbiterC(TEST_ARBITER_RESOURCE) as Arbiter;
 
   enum {
     RESOURCE0_ID = unique(TEST_ARBITER_RESOURCE),

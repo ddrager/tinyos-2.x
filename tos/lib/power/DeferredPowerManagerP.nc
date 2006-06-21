@@ -89,9 +89,6 @@ implementation {
     else atomic f.requested = TRUE;
   }
 
-  async event void ResourceController.immediateRequested() {
-  }
-
   default command error_t StdControl.start() {
     return SUCCESS;
   }
@@ -110,7 +107,7 @@ implementation {
   }
 
   event void TimerMilli.fired() {
-    if(call ResourceController.request() == SUCCESS) {
+    if(call ResourceController.immediateRequest() == SUCCESS) {
       f.stopping = TRUE;
       call PowerDownCleanup.cleanup();
       call StdControl.stop();

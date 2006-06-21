@@ -86,7 +86,7 @@ interface ResourceController {
   *             FAIL You tried to release but you are not the
   *                    owner of the resource
   */
-  command error_t release();
+  async command error_t release();
 
   /**
   * Release a shared resource you previously acquired in asynchronous context.
@@ -97,7 +97,7 @@ interface ResourceController {
   *             FAIL You tried to release but you are not the
   *                    owner of the resource.
   */
-  async command error_t immediateRelease();
+  async command error_t immediateRequest();
 
   /**
   * You are now in control of the resource. Note that this event
@@ -121,15 +121,6 @@ interface ResourceController {
    * event
    */
   event void requested();
-
-  /**
-  * This event is signalled whenever the user of this interface
-  * currently has control of the resource, and another user requests
-  * it through the use of the ImmediateResource interface.
-  * You may want to consider releasing a resource based on this
-  * event
-  */
-  async event void immediateRequested();
 
   /**
    * Event sent to the resource controller whenever a resource goes idle.

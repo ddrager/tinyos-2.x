@@ -58,10 +58,6 @@ generic module AsyncPowerManagerP() {
   }
 }
 implementation {
-
-  norace struct {
-    uint8_t stopping :1;
-  } f; //for flags
   
   command error_t Init.init() {
     call ResourceController.request();
@@ -70,22 +66,13 @@ implementation {
 
   event void ResourceController.requested() {
     call AsyncStdControl.start();
-    call ResourceController.release();  
-  }
-
-  async event void ResourceController.immediateRequested() {
-    if(f.stopping == FALSE) {
-      call AsyncStdControl.start();
-      call ResourceController.immediateRelease();
-    }
+    call ResourceController.release(); 
   }
 
   async event void ResourceController.idle() {
-    if(call ResourceController.request() == SUCCESS) {
-      atomic f.stopping = TRUE;
+    if(call ResourceController.immediateRequest() == SUCCESS) {
       call PowerDownCleanup.cleanup();
       call AsyncStdControl.stop();
-      atomic f.stopping = FALSE;
     }
   }
 

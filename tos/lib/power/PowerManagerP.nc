@@ -84,8 +84,6 @@ implementation {
     }
     else f.requested = TRUE;
   }
-  async event void ResourceController.immediateRequested() {
-  }
   
   default command error_t StdControl.start() {
     return SUCCESS;

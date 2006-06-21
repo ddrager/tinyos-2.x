@@ -80,20 +80,20 @@
 generic configuration RoundRobinArbiterC(char resourceName[]) {
   provides {
     interface Resource[uint8_t id];
-    interface ResourceController;
     interface ArbiterInfo;
   }
+  uses interface ResourceConfigure[uint8_t id];
 }
 implementation {
   components MainC;
-  components new RoundRobinQueueC(uniqueCount(resourceName)) as Queue;
-  components new ArbiterP(uniqueCount(resourceName)) as Arbiter;
+  components new AsyncRoundRobinQueueC(uniqueCount(resourceName)) as Queue;
+  components new ArbiterP() as Arbiter;
 
   MainC.SoftwareInit -> Queue;
 
   Resource = Arbiter;
-  ResourceController = Arbiter;
   ArbiterInfo = Arbiter;
+  ResourceConfigure = Arbiter;
 
   Arbiter.Queue -> Queue;
 }
