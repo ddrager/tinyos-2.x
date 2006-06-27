@@ -59,9 +59,6 @@
  
 generic configuration StdControlDeferredPowerManagerC(uint32_t delay)
 {
-  provides {
-    interface Init;
-  }
   uses {
     interface StdControl;
 
@@ -73,8 +70,6 @@ generic configuration StdControlDeferredPowerManagerC(uint32_t delay)
 implementation {
   components new TimerMilliC(),
              new DeferredPowerManagerP(delay) as PowerManager;
-
-  Init = PowerManager;
  
   PowerManager.StdControl = StdControl;
 

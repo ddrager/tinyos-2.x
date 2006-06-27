@@ -55,9 +55,6 @@
  */
  
 generic configuration SplitControlPowerManagerC() {
-  provides {
-    interface Init;
-  }
   uses {
     interface SplitControl;
 
@@ -68,8 +65,6 @@ generic configuration SplitControlPowerManagerC() {
 }
 implementation {
   components  new PowerManagerP() as PowerManager;
-
-  Init = PowerManager;
  
   PowerManager.SplitControl = SplitControl;
 

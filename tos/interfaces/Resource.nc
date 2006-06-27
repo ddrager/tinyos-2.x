@@ -78,6 +78,15 @@ interface Resource {
   async command error_t request();
 
   /**
+  * Request immediate access to a shared resource. You must call release()
+  * when you are done with it.
+  *
+  * @return SUCCESS When a request has been accepted. <br>
+  *            FAIL The request cannot be fulfilled
+  */
+  async command error_t immediateRequest();
+
+  /**
    * You are now in control of the resource.
    */
   event void granted();

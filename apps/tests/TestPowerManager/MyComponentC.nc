@@ -37,7 +37,6 @@
 #define MYCOMPONENT_RESOURCE   "MyComponent.Resource"
 configuration MyComponentC{
   provides {
-    interface Init;
     interface Resource[uint8_t];
   }
 }
@@ -45,19 +44,18 @@ implementation {
   components MyComponentP, LedsC, 
              new TimerMilliC() as StartTimer, new TimerMilliC() as StopTimer,
              new ControlledFcfsArbiterC(MYCOMPONENT_RESOURCE) as Arbiter,
-//              new AsyncStdControlPowerManagerC() as PowerManager;
+             new AsyncStdControlPowerManagerC() as PowerManager;
 //              new AsyncStdControlDeferredPowerManagerC(750) as PowerManager;
 //              new StdControlPowerManagerC() as PowerManager;
 //              new StdControlDeferredPowerManagerC(750) as PowerManager;
 //              new SplitControlPowerManagerC() as PowerManager;
-             new SplitControlDeferredPowerManagerC(750) as PowerManager;
+//              new SplitControlDeferredPowerManagerC(750) as PowerManager;
 
-  Init = PowerManager;
   Resource = Arbiter;
 
-//   PowerManager.AsyncStdControl -> MyComponentP.AsyncStdControl;
+  PowerManager.AsyncStdControl -> MyComponentP.AsyncStdControl;
 //   PowerManager.StdControl -> MyComponentP.StdControl;
-  PowerManager.SplitControl -> MyComponentP.SplitControl;
+//   PowerManager.SplitControl -> MyComponentP.SplitControl;
   PowerManager.ResourceController -> Arbiter.ResourceController;
   PowerManager.ArbiterInfo -> Arbiter.ArbiterInfo;
 

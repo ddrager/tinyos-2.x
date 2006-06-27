@@ -56,9 +56,6 @@
  
 generic configuration AsyncStdControlPowerManagerC()
 {
-  provides {
-    interface Init;
-  }
   uses {
     interface AsyncStdControl;
 
@@ -69,8 +66,6 @@ generic configuration AsyncStdControlPowerManagerC()
 }
 implementation {
   components new AsyncPowerManagerP() as PowerManager;
-
-  Init = PowerManager;
  
   PowerManager.AsyncStdControl = AsyncStdControl;
 

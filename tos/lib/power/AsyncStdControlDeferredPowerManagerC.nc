@@ -59,9 +59,6 @@
  
 generic configuration AsyncStdControlDeferredPowerManagerC(uint32_t delay)
 {
-  provides {
-    interface Init;
-  }
   uses {
     interface AsyncStdControl;
 
@@ -73,11 +70,8 @@ generic configuration AsyncStdControlDeferredPowerManagerC(uint32_t delay)
 implementation {
   components new TimerMilliC(),
              new AsyncDeferredPowerManagerP(delay) as PowerManager;
-
-  Init = PowerManager;
  
   PowerManager.AsyncStdControl = AsyncStdControl;
-
   PowerManager.PowerDownCleanup = PowerDownCleanup;
  
   PowerManager.ResourceController = ResourceController;

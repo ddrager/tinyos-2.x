@@ -56,9 +56,6 @@
  
 generic configuration StdControlPowerManagerC()
 {
-  provides {
-    interface Init;
-  }
   uses {
     interface StdControl;
 
@@ -69,8 +66,6 @@ generic configuration StdControlPowerManagerC()
 }
 implementation {
   components new PowerManagerP() as PowerManager;
-
-  Init = PowerManager;
  
   PowerManager.StdControl = StdControl;
 
