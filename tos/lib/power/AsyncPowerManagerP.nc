@@ -56,7 +56,7 @@ generic module AsyncPowerManagerP() {
 }
 implementation {
 
-  event void ResourceController.requested() {
+  async event void ResourceController.requested() {
     call AsyncStdControl.start();
     call ResourceController.release(); 
   }

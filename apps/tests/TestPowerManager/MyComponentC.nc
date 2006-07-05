@@ -44,8 +44,8 @@ implementation {
   components MyComponentP, LedsC, 
              new TimerMilliC() as StartTimer, new TimerMilliC() as StopTimer,
              new ControlledFcfsArbiterC(MYCOMPONENT_RESOURCE) as Arbiter,
-             new AsyncStdControlPowerManagerC() as PowerManager;
-//              new AsyncStdControlDeferredPowerManagerC(750) as PowerManager;
+//              new AsyncStdControlPowerManagerC() as PowerManager;
+             new AsyncStdControlDeferredPowerManagerC(750) as PowerManager;
 //              new StdControlPowerManagerC() as PowerManager;
 //              new StdControlDeferredPowerManagerC(750) as PowerManager;
 //              new SplitControlPowerManagerC() as PowerManager;

@@ -63,17 +63,24 @@ generic module DeferredPowerManagerP(uint32_t delay) {
 implementation {
 
   norace bool stopping = FALSE;
-  bool requested  = FALSE;
+  norace bool requested  = FALSE;
+  norace bool stopTimer = FALSE;
+
+  task void startTask() {
+    call TimerMilli.stop();
+    stopTimer = FALSE;
+    call StdControl.start();
+    call SplitControl.start();
+  }
 
   task void timerTask() { 
     call TimerMilli.startOneShot(delay); 
   }
 
-  event void ResourceController.requested() {
+  async event void ResourceController.requested() {
     if(stopping == FALSE) {
-      call TimerMilli.stop();
-      call StdControl.start();
-      call SplitControl.start();
+      stopTimer = TRUE;
+      post startTask();
     }
     else atomic requested = TRUE;
   }
@@ -98,10 +105,12 @@ implementation {
   }
 
   event void TimerMilli.fired() {
+    if(stopTimer == FALSE) {
       stopping = TRUE;
       call PowerDownCleanup.cleanup();
       call StdControl.stop();
       call SplitControl.stop();
+    }
   }
 
   event void SplitControl.stopDone(error_t error) {

@@ -60,16 +60,20 @@ implementation {
   norace bool stopping = FALSE;
   bool requested  = FALSE;
 
+  task void startTask() {
+    call StdControl.start();
+    call SplitControl.start();
+  }
+
   task void stopTask() {
     call PowerDownCleanup.cleanup();
     call StdControl.stop();
     call SplitControl.stop();    
   }
 
-  event void ResourceController.requested() {
+  async event void ResourceController.requested() {
     if(stopping == FALSE) {
-      call StdControl.start();
-      call SplitControl.start();
+      post startTask();
     }
     else requested = TRUE;
   }
