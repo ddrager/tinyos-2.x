@@ -91,6 +91,7 @@ implementation {
     return call UsartResource.isOwner[ id ]();
   }
 
+  default async command error_t UsartResource.isOwner[ uint8_t id ]() { return FAIL; }
   default async command error_t UsartResource.request[ uint8_t id ]() { return FAIL; }
   default async command error_t UsartResource.immediateRequest[ uint8_t id ]() { return FAIL; }
   default async command void UsartResource.release[ uint8_t id ]() {}

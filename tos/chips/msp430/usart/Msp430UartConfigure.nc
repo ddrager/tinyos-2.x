@@ -33,7 +33,7 @@
  * @version $Revision$ $Date$
  */
 
-#include "Msp430Usart.h"
+#include "msp430usart.h"
 
 interface Msp430UartConfigure {
   async command msp430_uart_config_t getConfig();

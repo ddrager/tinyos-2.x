@@ -28,13 +28,25 @@
  */
 
 /**
- * Interface used by Msp430Spi clients to reconfigure the SPI before use
- * @author Vlado Handziski <handzisk@tkn.tu-berlin.de>
- * @version $Revision$ $Date$
+ * Interface used by Msp430Uart clients to control/configure the Uart.
+ *
+ * @author Philipp Huppertz (huppertz@tkn.tu-berlin.de)
  */
+interface Msp430UartControl {
 
-#include "msp430usart.h"
-
-interface Msp430SpiConfigure {
-  async command msp430_spi_config_t getConfig();
+  /**
+  * Sets the Uart to Rx mode.
+  */
+  async command void setModeRx();
+  
+  /**
+  * Sets the Uart to Tx mode.
+  */
+  async command void setModeTx();
+  
+  /**
+  * Sets the Uart to duplex mode.
+  */
+  async command void setModeDuplex();
+  
 }

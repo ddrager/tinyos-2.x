@@ -58,7 +58,7 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "Msp430Usart.h"
+#include "msp430usart.h"
 /**
  * Implementation of USART1 lowlevel functionality - stateless.
  * Setting a mode will by default disable USART-Interrupts.
@@ -336,20 +336,6 @@ implementation
     call Usart.setUmctl(config.umctl);
   }
 
-  void setUartModeCommon(msp430_uart_config_t config) {
-    call Usart.disableSpi();
-    call Usart.disableI2C();
-    atomic {
-      call Usart.resetUsart(TRUE);
-      configUart(config);
-      call Usart.enableUart();
-      call Usart.resetUsart(FALSE);
-      call Usart.clrIntr();
-      call Usart.disableIntr();
-    }
-    return;
-  }
-
   async command void Usart.setModeUartTx(msp430_uart_config_t config) {
 
     call Usart.disableSpi();
@@ -359,8 +345,13 @@ implementation
     atomic {
       call UTXD.selectModuleFunc();
       call URXD.selectIOFunc();
+      call Usart.resetUsart(TRUE);
+      configUart(config);
+      call Usart.enableUartTx();
+      call Usart.resetUsart(FALSE);
+      call Usart.clrIntr();
+      call Usart.disableIntr();
     }
-    setUartModeCommon(config);
     return;
   }
 
@@ -369,12 +360,17 @@ implementation
     call Usart.disableSpi();
     call Usart.disableI2C();
     call Usart.disableUart();
-
+    
     atomic {
       call UTXD.selectIOFunc();
       call URXD.selectModuleFunc();
+      call Usart.resetUsart(TRUE);
+      configUart(config);
+      call Usart.enableUartRx();
+      call Usart.resetUsart(FALSE);
+      call Usart.clrIntr();
+      call Usart.disableIntr();
     }
-    setUartModeCommon(config);
     return;
   }
 
@@ -387,8 +383,13 @@ implementation
     atomic {
       call UTXD.selectModuleFunc();
       call URXD.selectModuleFunc();
+      call Usart.resetUsart(TRUE);
+      configUart(config);
+      call Usart.enableUart();
+      call Usart.resetUsart(FALSE);
+      call Usart.clrIntr();
+      call Usart.disableIntr();
     }
-    setUartModeCommon(config);
     return;
   }
 

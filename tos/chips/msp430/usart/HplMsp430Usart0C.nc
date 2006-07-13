@@ -61,7 +61,7 @@
  * @version $Revision$ $Date$
  */
 
-#include "Msp430Usart.h"
+#include "msp430usart.h"
 
 configuration HplMsp430Usart0C {
 

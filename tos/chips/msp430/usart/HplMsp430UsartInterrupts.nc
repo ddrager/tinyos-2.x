@@ -38,7 +38,7 @@
  * @version $Revision$ $Date$
  */
  
-#include "Msp430Usart.h"
+#include "msp430usart.h"
 
 interface HplMsp430UsartInterrupts {
 
