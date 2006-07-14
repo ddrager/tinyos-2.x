@@ -50,12 +50,15 @@ module Tda5250RadioP {
     interface SplitControl;
     interface Tda5250Control;
     interface RadioByteComm;
+    // ResourceRequest;
   }
   uses {
     interface HplTda5250Config;
     interface HplTda5250Data;
     interface Resource as ConfigResource;
     interface Resource as DataResource;
+    //interface ResourceRequested as DataResourceRequest;
+    
     interface Alarm<T32khz, uint16_t> as DelayTimer;
   }
 }
@@ -144,21 +147,21 @@ implementation {
           case RADIO_MODE_SLEEP_TRANSITION:
             call HplTda5250Config.SetSlaveMode();
             call HplTda5250Config.SetSleepMode();
-            call HplTda5250Data.disableTx();
-            call HplTda5250Data.disableRx();
-            call DataResource.release();
+            call ConfigResource.release();
             atomic radioMode = RADIO_MODE_SLEEP;
             signal Tda5250Control.SleepModeDone();
             break;
           case RADIO_MODE_TX_TRANSITION:
             call HplTda5250Config.SetSlaveMode();
             call HplTda5250Config.SetTxMode();
+            call ConfigResource.release();
             atomic delayTimer = TRANSMITTER_DELAY;
             call DelayTimer.start(TDA5250_TRANSMITTER_SETUP_TIME);
             break;
           case RADIO_MODE_RX_TRANSITION:
             call HplTda5250Config.SetSlaveMode();
             call HplTda5250Config.SetRxMode();
+            call ConfigResource.release();
             atomic delayTimer = RECEIVER_DELAY;
             call DelayTimer.start(TDA5250_RECEIVER_SETUP_TIME);
             break;
@@ -188,12 +191,12 @@ implementation {
         atomic mode = radioMode;
         switch(mode) {
           case RADIO_MODE_TX_TRANSITION:
-            call HplTda5250Data.enableTx();
+            call HplTda5250Data.setToTx();
             atomic radioMode = RADIO_MODE_TX;
             signal Tda5250Control.TxModeDone();
             break;
           case RADIO_MODE_RX_TRANSITION:
-            call HplTda5250Data.enableRx();
+            call HplTda5250Data.setToRx();
             atomic radioMode = RADIO_MODE_RX;
             signal Tda5250Control.RxModeDone();
             break;
@@ -205,6 +208,11 @@ implementation {
       event void DataResource.granted() {
         switchDataResource();
       }
+      
+//       async event void DataResourceRequest.requested() {
+//         signal ResourceRequested.requested();
+//       }
+
 
   /**
       Set the mode of the radio
@@ -220,11 +228,11 @@ implementation {
         }
         if(radioMode == RADIO_MODE_TIMER_TRANSITION) {
           call DataResource.release();
-          if (call ConfigResource.immediateRequest() == SUCCESS) {
-            switchConfigResource();
-          } else {
+         if (call ConfigResource.immediateRequest() == SUCCESS) {
+           switchConfigResource();
+         } else {
             call ConfigResource.request();
-          }
+         }
           return SUCCESS;
         }
         return FAIL;
@@ -364,7 +372,8 @@ implementation {
       }
 
       async command bool RadioByteComm.isTxDone() {
-        return call HplTda5250Data.isTxDone();
+        //return call HplTda5250Data.isTxDone();
+        return TRUE;
       }
       
       /* Generate events (these are no interrupts */
@@ -378,7 +387,6 @@ implementation {
           case RECEIVER_DELAY :
             delayTimer = RSSISTABLE_DELAY;
             call DelayTimer.start(TDA5250_RSSI_STABLE_TIME-TDA5250_RECEIVER_SETUP_TIME);
-            call ConfigResource.release();
             if (call DataResource.immediateRequest() == SUCCESS) {
               switchDataResource();
             } else {
@@ -386,8 +394,7 @@ implementation {
             }
             break;
           case TRANSMITTER_DELAY :
-            call ConfigResource.release();
-            if (call DataResource.immediateRequest() == SUCCESS) {
+           if (call DataResource.immediateRequest() == SUCCESS) {
               switchDataResource();
             } else {
               call DataResource.request();
