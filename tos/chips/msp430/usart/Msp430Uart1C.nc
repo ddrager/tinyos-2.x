@@ -36,13 +36,12 @@
  * @version $Revision$ $Date$
  */
 
-#include "Msp430Usart.h"
+#include "msp430usart.h"
 
 generic configuration Msp430Uart1C() {
 
   provides interface Resource;
   provides interface SerialByteComm;
-  provides interface Msp430UartControl as UartControl;
 
   uses interface Msp430UartConfigure;
 }
@@ -56,7 +55,6 @@ implementation {
   components Msp430Uart1P as UartP;
   Resource = UartP.Resource[ CLIENT_ID ];
   SerialByteComm = UartP.SerialByteComm;
-  UartControl = UartP.UartControl[ CLIENT_ID ];
   Msp430UartConfigure = UartP.Msp430UartConfigure[ CLIENT_ID ];
 
   components new Msp430Usart1C() as UsartC;

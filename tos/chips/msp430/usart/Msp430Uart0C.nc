@@ -42,7 +42,7 @@ generic configuration Msp430Uart0C() {
 
   provides interface Resource;
   provides interface SerialByteComm;
-  provides interface Msp430UartControl as UartControl;
+//   provides interface Msp430UartControl as UartControl;
 
   uses interface Msp430UartConfigure;
 }
@@ -56,7 +56,7 @@ implementation {
   components Msp430Uart0P as UartP;
   Resource = UartP.Resource[ CLIENT_ID ];
   SerialByteComm = UartP.SerialByteComm;
-  UartControl = UartP.UartControl[ CLIENT_ID ];
+//   UartControl = UartP.UartControl[ CLIENT_ID ];
   Msp430UartConfigure = UartP.Msp430UartConfigure[ CLIENT_ID ];
 
   components new Msp430Usart0C() as UsartC;

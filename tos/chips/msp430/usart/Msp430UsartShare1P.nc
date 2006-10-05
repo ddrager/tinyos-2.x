@@ -42,7 +42,6 @@ configuration Msp430UsartShare1P {
   provides interface ArbiterInfo;
 
   uses interface ResourceConfigure[ uint8_t id ];
-
 }
 
 implementation {
@@ -58,14 +57,8 @@ implementation {
   UsartShareP.ArbiterInfo -> ArbiterC;
 
   components new AsyncStdControlPowerManagerC() as PowerManagerC;
-  PowerManagerC.ArbiterInit -> ArbiterC;
   PowerManagerC.ResourceController -> ArbiterC;
-
+	
   components HplMsp430Usart1C as UsartC;
   PowerManagerC.AsyncStdControl -> UsartC;
-
-  components MainC;
-  MainC.SoftwareInit -> ArbiterC;
-  MainC.SoftwareInit -> PowerManagerC;
-
 }

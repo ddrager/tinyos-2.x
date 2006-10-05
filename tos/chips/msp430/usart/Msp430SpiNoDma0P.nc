@@ -61,7 +61,9 @@ implementation {
   components HplMsp430Usart0C as UsartC;
   SpiP.Usart -> UsartC;
 
-  components LedsC as Leds;
-  SpiP.Leds -> Leds;
+   components LedsC as Leds, HplMsp430GeneralIOC as MspGeneralIO;
+   SpiP.Leds -> Leds;
+   // SpiP.MeasureSpiPin -> MspGeneralIO.Port53;
+
 
 }
