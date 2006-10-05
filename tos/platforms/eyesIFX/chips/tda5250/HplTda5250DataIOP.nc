@@ -31,43 +31,42 @@
  * ========================================================================
  */
 
+#include "msp430usart.h"
+#include "tda5250BusResourceSettings.h"
+
  /**
- * Configuration file for using the IO pins to the TDA5250 Radio on
- * the eyesIFX platforms.
+ * Wrapper module for the Msp430 Uart abstraction.
  *
- * @author Kevin Klues <klues@tkn.tu-berlin.de>
- */
-configuration Tda5250RadioIOC
-{
-  provides interface GeneralIO as Tda5250RadioPASKNFSK;
-  provides interface GeneralIO as Tda5250RadioBUSM;
-  provides interface GeneralIO as Tda5250RadioENTDA;
-  provides interface GeneralIO as Tda5250RadioTXRX;
-  provides interface GeneralIO as Tda5250RadioDATA;
-  provides interface GeneralIO as Tda5250RadioPWDDD;
+ * @author Philipp Hupertz (huppertz@tkn.tu-berlin.de)
+  */
+module HplTda5250DataIOP {
+  provides {
+    interface HplTda5250DataControl;
+		interface Msp430UartConfigure as UartResourceConfigure;
+  }
+//   uses {
+//      interface Msp430UartControl as UartControl;
+//   }
 }
+
 implementation {
-  components
-      HplMsp430GeneralIOC as MspGeneralIO
-    , Tda5250ASKNFSKFakePinP      
-    , new Msp430GpioC() as rBUSM
-    , new Msp430GpioC() as rENTDA
-    , new Msp430GpioC() as rTXRX
-    , new Msp430GpioC() as rDATA
-    , new Msp430GpioC() as rPWDD
-    ;
+  
+  async command error_t HplTda5250DataControl.setToTx() {
+    //call UartControl.setModeTx();
+    tda5250_uart_config.uartConfig.urxe = 0;
+    tda5250_uart_config.uartConfig.utxe = 1;
+    return SUCCESS;
+  }
 
-  Tda5250RadioBUSM = rBUSM;
-  Tda5250RadioENTDA = rENTDA;
-  Tda5250RadioTXRX = rTXRX;
-  Tda5250RadioDATA = rDATA;
-  Tda5250RadioPWDDD = rPWDD;
+  async command error_t HplTda5250DataControl.setToRx() {
+   // call UartControl.setModeRx();
+   tda5250_uart_config.uartConfig.urxe = 1;
+   tda5250_uart_config.uartConfig.utxe = 0;
+   return SUCCESS;
+  }
+	
+	async command msp430_uart_union_config_t* UartResourceConfigure.getConfig() {
+		return &tda5250_uart_config;
+	}
 
-  Tda5250RadioPASKNFSK = Tda5250ASKNFSKFakePinP;
-  rBUSM -> MspGeneralIO.Port15;
-  rENTDA -> MspGeneralIO.Port16;
-  rTXRX -> MspGeneralIO.Port14;
-  rDATA -> MspGeneralIO.Port11;
-  rPWDD -> MspGeneralIO.Port10;
 }
-

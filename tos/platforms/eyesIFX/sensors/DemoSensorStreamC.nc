@@ -55,8 +55,10 @@ generic configuration DemoSensorStreamC()
 implementation
 {
   components SensorSettingsC as Settings;
-
   components new AdcReadStreamClientC() as AdcReadStreamClient;
-  ReadStream = AdcReadStreamClient;
+  components new ReadStreamShiftC(4) as ReadStreamShift;
+    
+  ReadStream = ReadStreamShift;
+  ReadStreamShift.ReadStreamRaw -> AdcReadStreamClient;
   AdcReadStreamClient.Msp430Adc12Config -> Settings.Msp430Adc12Config[PHOTO_SENSOR_DEFAULT];
 }
