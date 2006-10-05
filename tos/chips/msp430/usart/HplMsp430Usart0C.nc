@@ -58,7 +58,6 @@
  *
  * @author Jonathan Hui <jhui@archrock.com>
  * @author Joe Polastre
- * @version $Revision$ $Date$
  */
 
 #include "msp430usart.h"
