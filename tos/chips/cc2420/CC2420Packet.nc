@@ -34,7 +34,7 @@
  * @version $Revision$ $Date$
  */
 
-#include "message_t.h"
+#include "message.h"
 
 interface CC2420Packet {
   
