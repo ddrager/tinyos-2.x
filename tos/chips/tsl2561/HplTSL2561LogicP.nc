@@ -285,7 +285,7 @@ implementation {
       signal HplTSL256x.setTHRESHLOWDone(error);
       break;
     case STATE_READID:
-      error = call I2CPacket.read(I2C_STOP,devAddr,1,mI2CBuffer);
+      error = call I2CPacket.read(I2C_START | I2C_STOP,devAddr,1,mI2CBuffer);
       break;
     default:
       mState = STATE_IDLE;
